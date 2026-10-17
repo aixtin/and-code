@@ -40,6 +40,7 @@ class LocalAiController(
     private val port: Int = DEFAULT_PORT,
     private val httpClient: OkHttpClient = defaultHttpClient(),
     private val onProviderSync: () -> Unit = {},
+    private val onProviderClear: () -> Unit = {},
 ) {
     private val mutableState = MutableStateFlow(LocalAiState.Idle)
     val state: StateFlow<LocalAiState> = mutableState.asStateFlow()
@@ -105,6 +106,7 @@ class LocalAiController(
                 runCatching { current.destroy() }
                 process = null
                 mutableState.value = LocalAiState.Idle
+                onProviderClear()
             }
         }
     }
@@ -133,13 +135,13 @@ class LocalAiController(
 
     companion object {
         const val DEFAULT_PORT = 8097
-        const val DEFAULT_NGL = 24
-        private const val READY_TIMEOUT_MILLIS = 60_000L
+        private const val DEFAULT_NGL = 24
+        private const val READY_TIMEOUT_MILLIS = 120_000L
 
-        fun defaultHttpClient(): OkHttpClient =
+        private fun defaultHttpClient(): OkHttpClient =
             OkHttpClient.Builder()
-                .connectTimeout(2, TimeUnit.SECONDS)
-                .readTimeout(2, TimeUnit.SECONDS)
+                .connectTimeout(5, TimeUnit.SECONDS)
+                .readTimeout(5, TimeUnit.SECONDS)
                 .build()
     }
 }

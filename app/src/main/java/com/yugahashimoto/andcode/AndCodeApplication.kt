@@ -169,6 +169,11 @@ class AndCodeApplication : Application() {
         private set
 
     lateinit var customProviders: CustomProviderStore
+
+    lateinit var localAiModelScanner: com.yugahashimoto.andcode.runtime.local.LocalAiModelScanner
+        private set
+
+    lateinit var localAiController: com.yugahashimoto.andcode.runtime.local.LocalAiController
         private set
 
     lateinit var voskModels: VoskModelStore
@@ -448,6 +453,36 @@ class AndCodeApplication : Application() {
                 messages = runtimeMessages,
             )
         localRuntimeController = LocalRuntimeServiceController(this)
+        localAiModelScanner = com.yugahashimoto.andcode.runtime.local.LocalAiModelScanner()
+        localAiController =
+            com.yugahashimoto.andcode.runtime.local.LocalAiController(
+                scope = applicationScope,
+                proot = com.yugahashimoto.andcode.runtime.local.EmbeddedCommandSuite(this, runtimeDirectory, abi)
+                    .ensureInstalled().proot,
+                rootfs = File(runtimeDirectory, "environment/rootfs"),
+                installer =
+                    com.yugahashimoto.andcode.runtime.local.LocalAiInstaller(
+                        unpackAsset = { target ->
+                            assets.open("llama-oc.tar.gz").use { input ->
+                                com.yugahashimoto.andcode.runtime.local.RuntimeArchive.extractTarGz(input, target)
+                            }
+                        },
+                    ),
+                modelDir = {
+                    settings.localAiModelPath?.let { java.io.File(it) }?.takeIf { it.isFile }
+                },
+                modelArg = { model -> listOf("-m", "/models/${model.getName()}", "-c", "2048") },
+                onProviderSync = {
+                    settings.localAiModelPath?.let { java.io.File(it) }?.takeIf { it.isFile }
+                        ?.let { file ->
+                            com.yugahashimoto.andcode.runtime.local.LocalAiProviderSync(customProviders)
+                                .advertise(com.yugahashimoto.andcode.runtime.local.LocalAiModel(file))
+                        }
+                },
+                onProviderClear = {
+                    com.yugahashimoto.andcode.runtime.local.LocalAiProviderSync(customProviders).clear()
+                },
+            )
         adbConnectionManager =
             AdbConnectionManager(
                 shellRunner = AdbShellRunner { command, timeoutSeconds -> commandRunner.runShell(command, timeoutSeconds) },

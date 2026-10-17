@@ -24,6 +24,8 @@ import com.yugahashimoto.andcode.feature.settings.CodexAgentSettingsScreen
 import com.yugahashimoto.andcode.feature.settings.CodexSignInActions
 import com.yugahashimoto.andcode.feature.settings.CodexSignInViewModel
 import com.yugahashimoto.andcode.feature.settings.GitHubSettingsScreen
+import com.yugahashimoto.andcode.feature.settings.LocalAiSettingsScreen
+import com.yugahashimoto.andcode.feature.settings.LocalAiSettingsViewModel
 import com.yugahashimoto.andcode.feature.settings.ModelVisibilityScreen
 import com.yugahashimoto.andcode.feature.settings.OpenCodeAgentSettingsScreen
 import com.yugahashimoto.andcode.feature.settings.OpenCodeAgentSettingsViewModel
@@ -281,6 +283,7 @@ fun NavGraphBuilder.settingsNavGraph(
             onOpenClaudeCode = { navController.navigate(ROUTE_SETTINGS_AGENT_CLAUDE) },
             onOpenAntigravity = { navController.navigate(ROUTE_SETTINGS_AGENT_ANTIGRAVITY) },
             onOpenCodex = { navController.navigate(ROUTE_SETTINGS_AGENT_CODEX) },
+            onOpenLocalAi = { navController.navigate(ROUTE_SETTINGS_LOCAL_AI) },
             onBack = { navController.popBackStack() },
         )
     }
@@ -460,6 +463,31 @@ fun NavGraphBuilder.settingsNavGraph(
             onSubmitCustomProvider = settingsViewModel::submitCustomProvider,
             onDismissCustomProviderDialog = settingsViewModel::dismissCustomProviderDialog,
             onRemoveCustomProvider = settingsViewModel::removeCustomProvider,
+            onBack = { navController.popBackStack() },
+        )
+    }
+
+    composable(ROUTE_SETTINGS_LOCAL_AI) {
+        val app = context.applicationContext as com.yugahashimoto.andcode.AndCodeApplication
+        val localAiViewModel: LocalAiSettingsViewModel =
+            androidx.lifecycle.viewmodel.compose.viewModel(
+                key = "settings-local-ai",
+                factory =
+                    com.yugahashimoto.andcode.ui.ViewModelFactory {
+                        LocalAiSettingsViewModel(
+                            scanner = app.localAiModelScanner,
+                            controller = app.localAiController,
+                            settings = app.settings,
+                        )
+                    },
+            )
+        val localAiState by localAiViewModel.state.collectAsState()
+        LocalAiSettingsScreen(
+            state = localAiState,
+            onSelect = localAiViewModel::select,
+            onRefresh = localAiViewModel::refreshModels,
+            onStart = localAiViewModel::start,
+            onStop = localAiViewModel::stop,
             onBack = { navController.popBackStack() },
         )
     }
