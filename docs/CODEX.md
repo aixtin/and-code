@@ -240,6 +240,15 @@ omit these fields simply shows no effort or fast control for them):
     seen triggers a best-effort `model/list` re-read, retried on later turns until one read succeeds.
     If the model is still unknown, the turn sends `serviceTier: "default"` and omits `effort`.
   - `isDefault: boolean` is part of the generated `v2/Model.ts` in both 0.155.1 and 0.163.0.
+  - `serviceTier` is a plain `string | null` in `v2/TurnStartParams` of both 0.142.5 and 0.155.1 (checked
+    with `codex app-server generate-json-schema`), so `"default"` is not rejected as an unknown enum
+    value on those versions. Whether such a server treats `"default"` as standard speed was not run.
+  - **This replaces `~/.codex/config.toml`.** Because `effort` and `serviceTier` are sent on every turn,
+    a `model_reasoning_effort` or `service_tier` set there no longer applies to turns sent from AndCode:
+    the thinking and Fast chips are the source of truth, falling back to the model's own default rather
+    than to the file. This covers every path that goes through `CodexTarget` (scheduled tasks, voice and
+    quick input as well as chat); those pass no variant and no tier, so they always use the model
+    defaults and do not follow the global Fast choice.
 
 The fast fields are named `codexFast*` so they cannot collide with an OpenCode key, and they stay
 serialized so the disk catalogue cache keeps them. `serviceTier` on `PromptRequest` is built field by
