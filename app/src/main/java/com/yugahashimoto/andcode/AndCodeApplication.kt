@@ -453,18 +453,25 @@ class AndCodeApplication : Application() {
                 messages = runtimeMessages,
             )
         localRuntimeController = LocalRuntimeServiceController(this)
-        localAiModelScanner = com.yugahashimoto.andcode.runtime.local.LocalAiModelScanner()
+        localAiModelScanner =
+            com.yugahashimoto.andcode.runtime.local.LocalAiModelScanner(
+                extraDirectories = listOf(java.io.File(getExternalFilesDir(null), "local-ai-models")),
+            )
         localAiController =
             com.yugahashimoto.andcode.runtime.local.LocalAiController(
                 scope = applicationScope,
                 proot = com.yugahashimoto.andcode.runtime.local.EmbeddedCommandSuite(this, runtimeDirectory, abi)
                     .ensureInstalled().proot,
+                prootEnvironment =
+                    com.yugahashimoto.andcode.runtime.local.EmbeddedCommandSuite(this, runtimeDirectory, abi)
+                        .ensureInstalled()
+                        .environment(),
                 rootfs = File(runtimeDirectory, "environment/rootfs"),
                 installer =
                     com.yugahashimoto.andcode.runtime.local.LocalAiInstaller(
                         unpackAsset = { target ->
-                            assets.open("llama-oc.tar.gz").use { input ->
-                                com.yugahashimoto.andcode.runtime.local.RuntimeArchive.extractTarGz(input, target)
+                            assets.open("llama-oc.tar").use { input ->
+                                com.yugahashimoto.andcode.runtime.local.RuntimeArchive.extractTar(input, target)
                             }
                         },
                     ),

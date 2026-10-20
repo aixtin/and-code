@@ -33,6 +33,7 @@ enum class LocalAiState {
 class LocalAiController(
     private val scope: CoroutineScope,
     private val proot: File,
+    private val prootEnvironment: Map<String, String> = emptyMap(),
     private val rootfs: File,
     private val installer: LocalAiInstaller,
     private val modelDir: () -> File?,
@@ -68,7 +69,7 @@ class LocalAiController(
                     val server = installer.llamaServer(rootfs)
                         ?: error("llama-server is missing in the runtime")
                     val command =
-                        localAiProotCommandPrefix(proot, rootfs, model) +
+                        localAiProotCommandPrefix(proot, rootfs, model.parentFile ?: model) +
                             listOf(
                                 "/bin/busybox",
                                 "sh",
@@ -82,12 +83,14 @@ class LocalAiController(
                         ProcessBuilder(command)
                             .redirectErrorStream(true)
                             .redirectOutput(ProcessBuilder.Redirect.to(File(rootfs.parentFile ?: rootfs, "llama-ai.log")))
+                            .apply { environment().putAll(prootEnvironment) }
                             .start()
                     process = started
                     awaitReady()
                     onProviderSync()
                     mutableState.value = LocalAiState.Running
                 } catch (error: Throwable) {
+                    android.util.Log.e("LocalAi", "start failed", error)
                     process?.destroy()
                     process = null
                     mutableState.value = LocalAiState.Failed

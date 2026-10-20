@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -54,6 +55,7 @@ fun LocalAiSettingsScreen(
     state: LocalAiUiState,
     onSelect: (LocalAiModel) -> Unit,
     onRefresh: () -> Unit,
+    onImport: () -> Unit,
     onStart: () -> Unit,
     onStop: () -> Unit,
     onBack: () -> Unit,
@@ -93,29 +95,51 @@ fun LocalAiSettingsScreen(
             StatusBanner(state.runtimeState)
 
             SettingsSection(title = stringResource(R.string.settings_local_ai_models_section)) {
-                if (state.scanning) {
-                    Row(
-                        modifier = Modifier.padding(vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        CircularProgressIndicator(modifier = Modifier.size(18.dp))
-                        Text(stringResource(R.string.settings_local_ai_scanning))
-                    }
-                } else if (state.models.isEmpty()) {
+                if (state.importResult != null) {
                     Text(
-                        text = stringResource(R.string.settings_local_ai_no_models),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(vertical = 12.dp),
+                        text = importResultLabel(state.importResult),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(vertical = 4.dp),
                     )
-                } else {
-                    state.models.forEachIndexed { index, model ->
-                        ModelRow(
-                            model = model,
-                            selected = model.file == state.selectedModel?.file,
-                            onClick = { onSelect(model) },
+                }
+                when {
+                    state.scanning -> {
+                        Row(
+                            modifier = Modifier.padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(18.dp))
+                            Text(stringResource(R.string.settings_local_ai_scanning))
+                        }
+                    }
+                    state.models.isEmpty() -> {
+                        Text(
+                            text = stringResource(R.string.settings_local_ai_no_models),
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(vertical = 12.dp),
                         )
-                        if (index != state.models.lastIndex) HorizontalDivider()
+                        ImportButton(
+                            importing = state.importing,
+                            onClick = onImport,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                    else -> {
+                        state.models.forEachIndexed { index, model ->
+                            ModelRow(
+                                model = model,
+                                selected = model.file == state.selectedModel?.file,
+                                onClick = { onSelect(model) },
+                            )
+                            if (index != state.models.lastIndex) HorizontalDivider()
+                        }
+                        ImportButton(
+                            importing = state.importing,
+                            onClick = onImport,
+                            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                        )
                     }
                 }
             }
@@ -127,6 +151,7 @@ fun LocalAiSettingsScreen(
                 OutlinedButton(
                     onClick = onRefresh,
                     modifier = Modifier.weight(1f),
+                    enabled = !state.importing,
                 ) {
                     Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.size(6.dp))
@@ -153,6 +178,41 @@ fun LocalAiSettingsScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun importResultLabel(result: ImportResult): String {
+    val errors = result.errors.joinToString(", ")
+    return when {
+        result.ok == 0 && result.errors.isEmpty() -> stringResource(R.string.settings_local_ai_import_none)
+        result.ok == 0 && result.errors.isNotEmpty() ->
+            stringResource(R.string.settings_local_ai_import_failed, errors)
+        result.errors.isEmpty() && result.skipped == 0 ->
+            stringResource(R.string.settings_local_ai_import_done, result.ok)
+        else ->
+            stringResource(R.string.settings_local_ai_import_partial, result.ok, result.skipped, errors)
+    }
+}
+
+@Composable
+private fun ImportButton(
+    importing: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier,
+        enabled = !importing,
+    ) {
+        if (importing) {
+            CircularProgressIndicator(modifier = Modifier.size(18.dp))
+        } else {
+            Icon(Icons.Default.UploadFile, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.size(6.dp))
+            Text(stringResource(R.string.settings_local_ai_import))
         }
     }
 }

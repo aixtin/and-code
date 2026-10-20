@@ -1,6 +1,8 @@
 package com.yugahashimoto.andcode.ui.navigation
 
 import android.content.Context
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -478,14 +480,20 @@ fun NavGraphBuilder.settingsNavGraph(
                             scanner = app.localAiModelScanner,
                             controller = app.localAiController,
                             settings = app.settings,
+                            modelsDir = java.io.File(app.getExternalFilesDir(null), "local-ai-models"),
                         )
                     },
             )
         val localAiState by localAiViewModel.state.collectAsState()
+        val importLauncher =
+            rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+                localAiViewModel.importModels(uris, context.contentResolver)
+            }
         LocalAiSettingsScreen(
             state = localAiState,
             onSelect = localAiViewModel::select,
             onRefresh = localAiViewModel::refreshModels,
+            onImport = { importLauncher.launch(arrayOf("*/*")) },
             onStart = localAiViewModel::start,
             onStop = localAiViewModel::stop,
             onBack = { navController.popBackStack() },
